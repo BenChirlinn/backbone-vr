@@ -65,9 +65,9 @@ _.extend( wiredVR, {
 				object.rotation.y = Math.random() * 2 * Math.PI;
 				object.rotation.z = Math.random() * 2 * Math.PI;
 
-				object.scale.x = Math.random() + 0.5;
-				object.scale.y = Math.random() + 0.5;
-				object.scale.z = Math.random() + 0.5;
+				object.scale.x = 1;
+				object.scale.y = 1.6;
+				object.scale.z = 0.1;
 
 				wiredVR.Three.scene.add( object );
 
