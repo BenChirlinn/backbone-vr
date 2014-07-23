@@ -1,167 +1,177 @@
-var container, stats;
-			var camera, scene, projector, raycaster, renderer;
-			var vrEffect;
-			var vrControls;
-			var fullScreenButton = document.querySelector( '.button' );
+(function() {
 
-			var mouse = new THREE.Vector2(), INTERSECTED;
-			var radius = 100, theta = 0;
+wiredVR = {
+	Global: {
+		radius: 100,
+		theta: 0
+	},
+	DOM: {
+		container: null,
+		stats: null
+	},
+	Three: {
+		camera: new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 ),
+		scene: new THREE.Scene(),
+		projector: new THREE.Projector(),
+		raycaster: new THREE.Raycaster(),
+		renderer: new THREE.WebGLRenderer(),
+		intersected: null
+	}
+};
 
-			init();
-			animate();
+_.extend( wiredVR, {
+	Device: {
+		vrEffect: new THREE.VREffect(wiredVR.Three.renderer, function(error) {
+			if (error) {
+				$('.button').addClass('error').html(error);
+			}
+		}),
+		vrControls: new THREE.VRControls(wiredVR.Three.camera),
+		mouse: new THREE.Vector2()
+	},
 
-			function init() {
+	Model: Backbone.Model.extend({
+		defaults: {
+			title: '',
+			link: '',
+			author: '',
+			image: ''
+		}
+	}),
+	Collection: Backbone.Collection.extend({
+		model: wiredVR.Model
+	}),
+	View: Backbone.View.extend({
+		initialize: function() {
+			var light = new THREE.DirectionalLight( 0xffff00, 2 );
+			light.position.set( 1, 1, 1 ).normalize();
+			wiredVR.Three.scene.add( light );
 
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
+			light = new THREE.DirectionalLight( 0xffff00 );
+			light.position.set( -1, -1, -1 ).normalize();
+			wiredVR.Three.scene.add( light );
 
-				var info = document.createElement( 'div' );
-				info.style.position = 'absolute';
-				info.style.top = '10px';
-				info.style.width = '100%';
-				info.style.textAlign = 'center';
-				info.innerHTML = '<a href="http://threejs.org" target="_blank">three.js</a> webgl - interactive cubes';
-				container.appendChild( info );
+			var geometry = new THREE.BoxGeometry( 20, 20, 20 );
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+			for ( var i = 0; i < 500; i ++ ) {
 
-				scene = new THREE.Scene();
+				var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
 
-				var light = new THREE.DirectionalLight( 0xffffff, 2 );
-				light.position.set( 1, 1, 1 ).normalize();
-				scene.add( light );
+				object.position.x = Math.random() * 800 - 400;
+				object.position.y = Math.random() * 800 - 400;
+				object.position.z = Math.random() * 800 - 400;
 
-				var light = new THREE.DirectionalLight( 0xffffff );
-				light.position.set( -1, -1, -1 ).normalize();
-				scene.add( light );
+				object.rotation.x = Math.random() * 2 * Math.PI;
+				object.rotation.y = Math.random() * 2 * Math.PI;
+				object.rotation.z = Math.random() * 2 * Math.PI;
 
-				var geometry = new THREE.BoxGeometry( 20, 20, 20 );
+				object.scale.x = Math.random() + 0.5;
+				object.scale.y = Math.random() + 0.5;
+				object.scale.z = Math.random() + 0.5;
 
-				for ( var i = 0; i < 2000; i ++ ) {
-
-					var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
-
-					object.position.x = Math.random() * 800 - 400;
-					object.position.y = Math.random() * 800 - 400;
-					object.position.z = Math.random() * 800 - 400;
-
-					object.rotation.x = Math.random() * 2 * Math.PI;
-					object.rotation.y = Math.random() * 2 * Math.PI;
-					object.rotation.z = Math.random() * 2 * Math.PI;
-
-					object.scale.x = Math.random() + 0.5;
-					object.scale.y = Math.random() + 0.5;
-					object.scale.z = Math.random() + 0.5;
-
-					scene.add( object );
-
-				}
-
-				projector = new THREE.Projector();
-				raycaster = new THREE.Raycaster();
-
-				renderer = new THREE.WebGLRenderer();
-
-				var fullScreenButton = document.querySelector( '.button' );
-				fullScreenButton.onclick = function() {
-					vrEffect.setFullScreen( true );
-				};
-
-				vrEffect = new THREE.VREffect(renderer, VREffectLoaded);
-				vrControls = new THREE.VRControls(camera);
-				function VREffectLoaded(error) {
-					if (error) {
-						fullScreenButton.innerHTML = error;
-						fullScreenButton.classList.add('error');
-					}
-				}
-
-				renderer.setClearColor( 0xf0f0f0 );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.sortObjects = false;
-				container.appendChild( renderer.domElement );
-
-				stats = new Stats();
-				stats.domElement.style.position = 'absolute';
-				stats.domElement.style.top = '0px';
-				container.appendChild( stats.domElement );
-
-				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-
-				//
-
-				window.addEventListener( 'resize', onWindowResize, false );
+				wiredVR.Three.scene.add( object );
 
 			}
 
-			function onWindowResize() {
+			wiredVR.Three.renderer.setClearColor( 0xf0f0f0 );
+			wiredVR.Three.renderer.setSize( window.innerWidth, window.innerHeight );
+			wiredVR.Three.renderer.sortObjects = false;
 
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
-
-			function onDocumentMouseMove( event ) {
-
+			$('document').mousemove( function() {
 				event.preventDefault();
 
-				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+				wiredVR.Device.mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				wiredVR.Device.mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+			} );
 
-			}
+			$('window').resize( function() {
+				wiredVR.Three.camera.aspect = window.innerWidth / window.innerHeight;
+				wiredVR.Three.camera.updateProjectionMatrix();
 
-			//
+				wiredVR.Three.renderer.setSize( window.innerWidth, window.innerHeight );
+			} );
+		},
+		template: _.template( $('#main').html() ),
 
-			function animate() {
+		render: function(eventName) {
+			$('body').append( this.template() );
 
-				requestAnimationFrame( animate );
+			$('.button').click( function() {
+				vrEffect.setFullScreen( true );
+			});
 
-				render();
-				stats.update();
+			wiredVR.DOM.container = $('.contents');
+			console.log(wiredVR.Three.renderer);
+			$('.contents').append(wiredVR.Three.renderer.domElement);
 
-			}
+			wiredVR.DOM.stats = new Stats();
+			wiredVR.DOM.stats.domElement.style.position = 'absolute';
+			wiredVR.DOM.stats.domElement.style.top = '0px';
+			wiredVR.DOM.container.append( wiredVR.DOM.stats.domElement );
 
-			function render() {
+			animate();
 
-				theta += 0.1;
+			return this;
+		},
 
-				camera.position.x = radius * Math.sin( THREE.Math.degToRad( theta ) );
-				camera.position.y = radius * Math.sin( THREE.Math.degToRad( theta ) );
-				camera.position.z = radius * Math.cos( THREE.Math.degToRad( theta ) );
-				camera.lookAt( scene.position );
+		renderVR: function() {
+			wiredVR.Global.theta += 0.1;
 
-				// find intersections
+			wiredVR.Three.camera.position.x = wiredVR.Global.radius * Math.sin( THREE.Math.degToRad( wiredVR.Global.theta ) );
+			wiredVR.Three.camera.position.y = wiredVR.Global.radius * Math.sin( THREE.Math.degToRad( wiredVR.Global.theta ) );
+			wiredVR.Three.camera.position.z = wiredVR.Global.radius * Math.cos( THREE.Math.degToRad( wiredVR.Global.theta ) );
+			wiredVR.Three.camera.lookAt( wiredVR.Three.scene.position );
 
-				var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
-				projector.unprojectVector( vector, camera );
+			// find intersections
 
-				raycaster.set( camera.position, vector.sub( camera.position ).normalize() );
+			var vector = new THREE.Vector3( wiredVR.Device.mouse.x, wiredVR.Device.mouse.y, 1 );
+			wiredVR.Three.projector.unprojectVector( vector, wiredVR.Three.camera );
 
-				var intersects = raycaster.intersectObjects( scene.children );
+			wiredVR.Three.raycaster.set( wiredVR.Three.camera.position, vector.sub( wiredVR.Three.camera.position ).normalize() );
 
-				if ( intersects.length > 0 ) {
+			var intersects = wiredVR.Three.raycaster.intersectObjects( wiredVR.Three.scene.children );
 
-					if ( INTERSECTED != intersects[ 0 ].object ) {
+			if ( intersects.length > 0 ) {
 
-						if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+				if ( wiredVR.Three.intersected != intersects[ 0 ].object ) {
 
-						INTERSECTED = intersects[ 0 ].object;
-						INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-						INTERSECTED.material.emissive.setHex( 0xff0000 );
+					if ( wiredVR.Three.intersected ) wiredVR.Three.intersected.material.emissive.setHex( wiredVR.Three.intersected.currentHex );
 
-					}
-
-				} else {
-
-					if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-
-					INTERSECTED = null;
+					wiredVR.Three.intersected = intersects[ 0 ].object;
+					wiredVR.Three.intersected.currentHex = wiredVR.Three.intersected.material.emissive.getHex();
+					wiredVR.Three.intersected.material.emissive.setHex( 0xff0000 );
 
 				}
 
-				vrControls.update();
-				vrEffect.render( scene, camera );
+			} else {
+
+				if ( wiredVR.Three.intersected ) wiredVR.Three.intersected.material.emissive.setHex( wiredVR.Three.intersected.currentHex );
+
+				wiredVR.Three.intersected = null;
 
 			}
+
+			wiredVR.Device.vrControls.update();
+			wiredVR.Device.vrEffect.render( wiredVR.Three.scene, wiredVR.Three.camera );
+		}
+	}),
+
+	init: function() {
+		this.app = new this.View();
+		this.app.render();
+	}
+});
+
+// Animation loop
+function animate() {
+	requestAnimationFrame( animate );
+
+	wiredVR.app.renderVR();
+	wiredVR.DOM.stats.update();
+}
+
+$(document).ready(function () {
+	wiredVR.init();
+});
+
+})();
