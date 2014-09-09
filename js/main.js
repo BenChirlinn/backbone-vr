@@ -97,7 +97,7 @@ _.extend( wiredVR, {
 			$('body').append( this.template() );
 
 			$('.button').click( function() {
-				vrEffect.setFullScreen( true );
+				wiredVR.Device.vrEffect.setFullScreen( true );
 			});
 
 			wiredVR.DOM.container = $('.contents');
